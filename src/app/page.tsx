@@ -5,10 +5,10 @@ export default function Home() {
     <main className="bg-white h-screen w-full flex justify-center items-center">
       <div className="w-full min-h-[480] aspect-video">
         <Video
-          poster="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg"
+          poster="/BigBuckBunny.jpg"
           sources={[
             {
-              src: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+              src: "/BigBuckBunny.mp4",
               type: "video/mp4",
             },
           ]}
@@ -17,4 +17,3 @@ export default function Home() {
     </main>
   );
 }
-///https://vjs.zencdn.net/v/oceans.mp4

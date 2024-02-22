@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useRef, useMemo, useEffect, MouseEvent } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import videojs from "video.js";
 import "video.js/dist/video-js.css";
 import Controls from "./controls";
-import Play from "./play";
+import { LargePlayButton } from "./buttons";
 import type { Reaction } from "./types";
-
-//https://file-examples.com/wp-content/storage/2017/04/file_example_MP4_1920_18MG.mp4
+import { createStopEvent } from "./util";
 
 type VideoProps = {
+  autoplay?: boolean;
   sources: {
     src: string;
     type: string;
@@ -41,7 +41,7 @@ const defaultOptions = {
   },
 };
 
-const Video = ({ sources, poster, onReady }: VideoProps) => {
+const Video = ({ autoplay, sources, poster, onReady }: VideoProps) => {
   const [ready, setReady] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLDivElement | null>(null);
@@ -50,37 +50,33 @@ const Video = ({ sources, poster, onReady }: VideoProps) => {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [playing, setPlaying] = useState(false);
   const [reactions, setReactions] = useState<Reaction[]>([]);
+
   const options = useMemo(
-    () => ({ ...defaultOptions, poster, sources }),
+    () => ({ ...defaultOptions, poster, sources, autoplay }),
     [sources]
   );
+
   useEffect(() => {
     if (!playerRef.current && videoRef.current) {
       const videoElement = document.createElement("video");
-      videoElement.classList.add("vjs-big-play-centered");
-      videoElement.classList.add("video-js");
+      videoElement.classList.add("video-js", "vjs-big-play-centered");
       videoRef.current.appendChild(videoElement);
 
       playerRef.current = videojs(videoElement, options, () => {
         console.log("player is ready");
         onReady?.();
-        setReady(true);
       });
       playerRef.current.one("loadedmetadata", () => {
         setDuration(playerRef.current.duration());
+        setReady(true);
       });
-      playerRef.current.on("ratechange", () => {
-        setPlaybackRate(playerRef.current.playbackRate());
-      });
-      playerRef.current.on("play", () => {
-        setPlaying(true);
-      });
-      playerRef.current.on("pause", () => {
-        setPlaying(false);
-      });
+      playerRef.current.on("ratechange", () =>
+        setPlaybackRate(playerRef.current.playbackRate())
+      );
+      playerRef.current.on("play", () => setPlaying(true));
+      playerRef.current.on("pause", () => setPlaying(false));
     } else if (playerRef.current) {
       const player = playerRef.current;
-
       player.autoplay(options.autoplay);
       player.src(options.sources);
     }
@@ -92,44 +88,36 @@ const Video = ({ sources, poster, onReady }: VideoProps) => {
       if (player && !player.isDisposed()) {
         player.dispose();
         playerRef.current = null;
+        setReady(false);
       }
     };
   }, [playerRef]);
 
-  const onClick = (e: MouseEvent<HTMLElement>) => {
-    const player = playerRef.current;
-    if (player) {
-      if (playing) {
-        player.pause();
-      } else {
-        player.play();
-      }
+  const onClick = createStopEvent(() => {
+    if (playing) {
+      playerRef.current?.pause();
+    } else {
+      playerRef.current?.play();
     }
-    e.preventDefault();
-    e.stopPropagation();
-  };
+  });
 
-  const onReaction = (reaction: Reaction) => {
+  const onReaction = (reaction: Reaction) =>
     setReactions((reactions) => [...reactions, reaction]);
-  };
 
-  const onFullScreen = () => {
-    containerRef.current?.requestFullscreen();
-  };
+  const onFullScreen = () => containerRef.current?.requestFullscreen();
 
-  const onExitFullScreen = () => {
-    document.exitFullscreen();
-  };
+  const onExitFullScreen = () => document.exitFullscreen();
 
   return (
     <div ref={containerRef} className="relative group w-full h-full">
       <div data-vjs-player>
         <div ref={videoRef} />
         <div className="absolute inset-0 bottom-40 z-0" onClick={onClick}></div>
-        <Play
+        <LargePlayButton
           onClick={onClick}
           playing={playing}
           duration={duration / playbackRate}
+          ready={ready}
         />
         <Controls
           player={playerRef.current}
